@@ -1,0 +1,14 @@
+{
+	"$schema": "https://modelcontextprotocol.io/schemas/mcp.json",
+	"mcpServers": {
+		"gowin": {
+			"command": "${workspaceFolder}/target/release/gw-synth-flash-mcp",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"env": {
+				"GOWIN_MCP_LOG_LEVEL": "info",
+				"GOWIN_MCP_PROJECT_ROOT": "${workspaceFolder}"
+			}
+		}
+	}
+}
