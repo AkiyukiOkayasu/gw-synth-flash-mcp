@@ -253,9 +253,7 @@ async fn exec_with_timeout(
     let stderr = String::from_utf8_lossy(&stderr_bytes).to_string();
 
     Ok(ExecMeta {
-        exit_code: status
-            .code()
-            .unwrap_or_else(|| if timed_out { 124 } else { 1 }),
+        exit_code: status.code().unwrap_or(if timed_out { 124 } else { 1 }),
         timed_out,
         duration_ms: start.elapsed().as_millis(),
         stdout,
@@ -830,10 +828,9 @@ fn parse_cable_names(text: &str) -> Vec<String> {
         }
 
         // 典型名
-        if stripped.to_lowercase().contains("gowin usb cable") {
-            if seen.insert(stripped.to_string()) {
-                found.push(stripped.to_string());
-            }
+        if stripped.to_lowercase().contains("gowin usb cable") && seen.insert(stripped.to_string())
+        {
+            found.push(stripped.to_string());
         }
 
         // Cable: xxx
