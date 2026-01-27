@@ -1,5 +1,8 @@
 # gw-synth-flash-mcp
 
+[![gw-synth-flash-mcp](https://img.shields.io/crates/v/gw-synth-flash-mcp.svg)](https://crates.io/crates/gw-synth-flash-mcp)
+[![gw-synth-flash-mcp](https://docs.rs/gw-synth-flash-mcp/badge.svg)](https://docs.rs/gw-synth-flash-mcp)
+
 An unofficial MCP (Model Context Protocol) server that exposes a few Gowin IDE CLI workflows as tools.
 
 - Backend: Rust + `rmcp`

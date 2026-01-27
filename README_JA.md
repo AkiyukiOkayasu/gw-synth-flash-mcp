@@ -1,5 +1,8 @@
 # gw-synth-flash-mcp
 
+[![gw-synth-flash-mcp](https://img.shields.io/crates/v/gw-synth-flash-mcp.svg)](https://crates.io/crates/gw-synth-flash-mcp)
+[![gw-synth-flash-mcp](https://docs.rs/gw-synth-flash-mcp/badge.svg)](https://docs.rs/gw-synth-flash-mcp)
+
 `gw_sh`（Tcl実行）と `programmer_cli`（FPGA書き込み）を、**MCP(Model Context Protocol)** のツールとして提供する非公式MCPサーバーです。
 
 - 実装: Rust + `rmcp`
