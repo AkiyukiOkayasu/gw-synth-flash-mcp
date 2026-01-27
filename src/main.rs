@@ -846,7 +846,53 @@ fn parse_cable_names(text: &str) -> Vec<String> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // コマンドライン引数の処理
+    let args: Vec<String> = std::env::args().collect();
+    
+    // --help または -h
+    if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
+        print_help();
+        return Ok(());
+    }
+    
+    // --version または -v
+    if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
+        print_version();
+        return Ok(());
+    }
+    
     let service = GowinMcp::new().serve(stdio()).await?;
     service.waiting().await?;
     Ok(())
+}
+
+fn print_help() {
+    println!("gw-synth-flash-mcp {}", env!("CARGO_PKG_VERSION"));
+    println!("{}", env!("CARGO_PKG_DESCRIPTION"));
+    println!();
+    println!("USAGE:");
+    println!("    gw-synth-flash-mcp [OPTIONS]");
+    println!();
+    println!("OPTIONS:");
+    println!("    -h, --help       Print help information");
+    println!("    -v, --version    Print version information");
+    println!();
+    println!("ENVIRONMENT VARIABLES:");
+    println!("    GOWIN_MCP_PROJECT_ROOT    Set the default project root directory");
+    println!();
+    println!("DESCRIPTION:");
+    println!("    An unofficial MCP server that provides Gowin IDE CLI tools:");
+    println!("    - gowin.run_tcl: Execute arbitrary Tcl scripts via gw_sh");
+    println!("    - gowin.list_cables: Enumerate available programming cables");
+    println!("    - gowin.program_fs: Program .fs files to SRAM");
+    println!();
+    println!("    This server communicates via stdio using the Model Context Protocol (MCP).");
+    println!("    Configure your MCP client (VS Code, Claude Code, etc.) to start this server.");
+    println!();
+    println!("REPOSITORY:");
+    println!("    {}", env!("CARGO_PKG_REPOSITORY"));
+}
+
+fn print_version() {
+    println!("gw-synth-flash-mcp {}", env!("CARGO_PKG_VERSION"));
 }
