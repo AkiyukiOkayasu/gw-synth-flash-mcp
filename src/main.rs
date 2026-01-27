@@ -79,13 +79,11 @@ fn detect_project_root(start_dir: &Path) -> Option<PathBuf> {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for e in entries.flatten() {
                 let p = e.path();
-                if p.is_file() {
-                    if let Some(ext) = p.extension() {
-                        if ext == "gprj" {
+                if p.is_file()
+                    && let Some(ext) = p.extension()
+                        && ext == "gprj" {
                             return Some(dir.to_path_buf());
                         }
-                    }
-                }
             }
         }
 
@@ -104,11 +102,10 @@ fn resolve_project_root(explicit: Option<&str>) -> PathBuf {
         return PathBuf::from(p);
     }
 
-    if let Ok(p) = std::env::var(DEFAULT_PROJECT_ROOT_ENV) {
-        if !p.trim().is_empty() {
+    if let Ok(p) = std::env::var(DEFAULT_PROJECT_ROOT_ENV)
+        && !p.trim().is_empty() {
             return PathBuf::from(p);
         }
-    }
 
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     detect_project_root(&cwd).unwrap_or(cwd)
@@ -601,8 +598,8 @@ impl GowinMcp {
             }
         }
 
-        if last_exec.as_ref().map(|e| e.exit_code).unwrap_or(1) != 0 {
-            if let Some(cable) = cable_from_output.clone() {
+        if last_exec.as_ref().map(|e| e.exit_code).unwrap_or(1) != 0
+            && let Some(cable) = cable_from_output.clone() {
                 let mut argv = Vec::new();
                 argv.extend(base_args.iter().take(4).cloned());
                 argv.push("--cable".into());
@@ -622,7 +619,6 @@ impl GowinMcp {
                 last_label = Some("retry_cable_from_output".into());
                 last_exec = Some(exec);
             }
-        }
 
         let exec = last_exec.ok_or_else(|| {
             McpError::new(
