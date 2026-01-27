@@ -1,9 +1,17 @@
 [package]
 name = "gw-synth-flash-mcp"
+authors = ["Akiyuki Okayasu <akiyuki.okayasu@gmail.com>"]
+repository = "https://github.com/AkiyukiOkayasu/gw-synth-flash-mcp"
 version = "0.1.0"
 edition = "2024"
-license = "Apache-2.0"
-description = "An unofficial MCP server that exposes a few Gowin IDE CLI workflows as tools."
+license = "MIT OR Apache-2.0"
+description = "An unofficial MCP server for Gowin IDE CLI workflows as tools."
+keywords = ["gowin", "mcp", "fpga"]
+categories = [
+    "command-line-utilities",
+    "development-tools::build-utils",
+    "embedded",
+]
 
 [dependencies]
 anyhow = "1.0.86"
