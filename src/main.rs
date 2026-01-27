@@ -5,21 +5,21 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use rmcp::{
+    ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::tool::ToolRouter,
     handler::server::wrapper::{Json, Parameters},
     model::*,
     tool, tool_handler, tool_router,
     transport::stdio,
-    ErrorData as McpError, ServerHandler, ServiceExt,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::AsyncReadExt,
     process::Command,
-    time::{timeout, Instant},
+    time::{Instant, timeout},
 };
 
 const DEFAULT_GOWIN_APP_PATH: &str = "/Applications/GowinIDE.app";
@@ -81,9 +81,10 @@ fn detect_project_root(start_dir: &Path) -> Option<PathBuf> {
                 let p = e.path();
                 if p.is_file()
                     && let Some(ext) = p.extension()
-                        && ext == "gprj" {
-                            return Some(dir.to_path_buf());
-                        }
+                    && ext == "gprj"
+                {
+                    return Some(dir.to_path_buf());
+                }
             }
         }
 
@@ -103,9 +104,10 @@ fn resolve_project_root(explicit: Option<&str>) -> PathBuf {
     }
 
     if let Ok(p) = std::env::var(DEFAULT_PROJECT_ROOT_ENV)
-        && !p.trim().is_empty() {
-            return PathBuf::from(p);
-        }
+        && !p.trim().is_empty()
+    {
+        return PathBuf::from(p);
+    }
 
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     detect_project_root(&cwd).unwrap_or(cwd)
@@ -599,26 +601,27 @@ impl GowinMcp {
         }
 
         if last_exec.as_ref().map(|e| e.exit_code).unwrap_or(1) != 0
-            && let Some(cable) = cable_from_output.clone() {
-                let mut argv = Vec::new();
-                argv.extend(base_args.iter().take(4).cloned());
-                argv.push("--cable".into());
-                argv.push(cable.clone());
-                argv.extend(base_args.iter().skip(4).cloned());
+            && let Some(cable) = cable_from_output.clone()
+        {
+            let mut argv = Vec::new();
+            argv.extend(base_args.iter().take(4).cloned());
+            argv.push("--cable".into());
+            argv.push(cable.clone());
+            argv.extend(base_args.iter().skip(4).cloned());
 
-                let exec = exec_with_timeout(&programmer_cli, &argv, None, None, timeout_sec)
-                    .await
-                    .map_err(|e| McpError::new(ErrorCode::INTERNAL_ERROR, e.to_string(), None))?;
+            let exec = exec_with_timeout(&programmer_cli, &argv, None, None, timeout_sec)
+                .await
+                .map_err(|e| McpError::new(ErrorCode::INTERNAL_ERROR, e.to_string(), None))?;
 
-                tried.push(VariantTried {
-                    label: "retry_cable_from_output".into(),
-                    exit_code: exec.exit_code,
-                });
+            tried.push(VariantTried {
+                label: "retry_cable_from_output".into(),
+                exit_code: exec.exit_code,
+            });
 
-                selected_cable = Some(cable);
-                last_label = Some("retry_cable_from_output".into());
-                last_exec = Some(exec);
-            }
+            selected_cable = Some(cable);
+            last_label = Some("retry_cable_from_output".into());
+            last_exec = Some(exec);
+        }
 
         let exec = last_exec.ok_or_else(|| {
             McpError::new(
@@ -848,19 +851,19 @@ fn parse_cable_names(text: &str) -> Vec<String> {
 async fn main() -> Result<()> {
     // コマンドライン引数の処理
     let args: Vec<String> = std::env::args().collect();
-    
+
     // --help または -h
     if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
         print_help();
         return Ok(());
     }
-    
+
     // --version または -v
     if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
         print_version();
         return Ok(());
     }
-    
+
     let service = GowinMcp::new().serve(stdio()).await?;
     service.waiting().await?;
     Ok(())
