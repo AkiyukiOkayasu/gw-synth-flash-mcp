@@ -23,13 +23,21 @@
   - デフォルト: `/Applications/GowinIDE.app`
   - 変更したい場合: ツール引数の `gowin_ide_app_path` を指定
 
-## ビルド
+## インストール
+
+crates.io からインストール:
+
+```sh
+cargo install gw-synth-flash-mcp
+```
+
+## ソースからビルド（開発者向け）
 
 ```sh
 cargo build --release
 ```
 
-インストール（`$PATH` で使いたい場合）:
+ローカルソースからインストール:
 
 ```sh
 cargo install --path .
@@ -62,15 +70,16 @@ export GOWIN_MCP_PROJECT_ROOT="/ABS/PATH/TO/your/project"
 
 ## クイックスタート
 
-1) ビルド
+1) インストール
 
 ```sh
-cargo build --release
+cargo install gw-synth-flash-mcp
 ```
 
-1) MCPクライアント（VS Code/Copilotなど）の設定に、このリポのバイナリを指定
+1) MCPクライアント（VS Code/Copilotなど）の設定に、インストールしたバイナリを指定
 
-- 例: `${workspaceFolder}/target/release/gw-synth-flash-mcp`
+- 例: `gw-synth-flash-mcp`（`$PATH` にインストールした場合）
+- または: `${workspaceFolder}/target/release/gw-synth-flash-mcp`（ソースからビルドした場合）
 
 1) 操作したいGowinプロジェクトを `GOWIN_MCP_PROJECT_ROOT`（またはツール引数の `project_root`）で指定
 
@@ -78,8 +87,9 @@ cargo build --release
 
 テンプレ: [examples/vscode.mcp.json](examples/vscode.mcp.json)
 
-- `GOWIN_MCP_PROJECT_ROOT` を設定して、どこから起動しても同じ project を操作できるようにしています
-- `command` は `${workspaceFolder}/target/release/gw-synth-flash-mcp` を前提にしています（`cargo install` を使う場合は `gw-synth-flash-mcp` に置き換え可能）
+- `cargo install` でインストールした場合: `gw-synth-flash-mcp` コマンドを使用
+- ソースからビルドした場合: `${workspaceFolder}/target/release/gw-synth-flash-mcp` を使用
+- `GOWIN_MCP_PROJECT_ROOT` を設定して、どこから起動しても同じ project を操作できるようにします
 
 ## Claude Code 接続テンプレ
 

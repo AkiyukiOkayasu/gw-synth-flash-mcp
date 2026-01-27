@@ -25,13 +25,21 @@ This repository is intended to be a standalone Rust crate:
   - Default location: `/Applications/GowinIDE.app`
   - If different: pass `gowin_ide_app_path` in tool parameters
 
-## Build
+## Install
+
+Install from crates.io:
+
+```sh
+cargo install gw-synth-flash-mcp
+```
+
+## Build from source (for development)
 
 ```sh
 cargo build --release
 ```
 
-Optional: install into your `$PATH`:
+Optional: install from local source:
 
 ```sh
 cargo install --path .
@@ -67,15 +75,16 @@ export GOWIN_MCP_PROJECT_ROOT="/ABS/PATH/TO/your/gowin/project"
 
 ## Quick start
 
-1) Build
+1) Install
 
 ```sh
-cargo build --release
+cargo install gw-synth-flash-mcp
 ```
 
-1) Point your MCP client (e.g., VS Code/Copilot) at the built binary
+1) Point your MCP client (e.g., VS Code/Copilot) at the installed binary
 
-- Example: `${workspaceFolder}/target/release/gw-synth-flash-mcp`
+- Example: `gw-synth-flash-mcp` (if installed in `$PATH`)
+- Or: `${workspaceFolder}/target/release/gw-synth-flash-mcp` (if built from source)
 
 1) Set `GOWIN_MCP_PROJECT_ROOT` (or pass `project_root` per tool call)
 
@@ -83,7 +92,8 @@ cargo build --release
 
 Template: [examples/vscode.mcp.json](examples/vscode.mcp.json)
 
-- Uses `${workspaceFolder}/target/release/gw-synth-flash-mcp` by default
+- If installed via `cargo install`: use `gw-synth-flash-mcp` command
+- If built from source: use `${workspaceFolder}/target/release/gw-synth-flash-mcp`
 - Set `GOWIN_MCP_PROJECT_ROOT` to your Gowin project directory
 
 ## Claude Code template
