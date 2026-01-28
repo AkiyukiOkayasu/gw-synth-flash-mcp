@@ -1,6 +1,6 @@
 use rmcp::{
-    transport::{ConfigureCommandExt, TokioChildProcess},
     ServiceExt,
+    transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::path::PathBuf;
 use tokio::process::Command;

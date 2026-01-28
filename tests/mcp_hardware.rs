@@ -1,6 +1,6 @@
 use rmcp::{
-    transport::{ConfigureCommandExt, TokioChildProcess},
     ServiceExt,
+    transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use serde_json::json;
 use std::path::PathBuf;
