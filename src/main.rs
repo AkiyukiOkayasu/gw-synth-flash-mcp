@@ -24,6 +24,8 @@ use tokio::{
 
 const DEFAULT_GOWIN_APP_PATH: &str = "/Applications/GowinIDE.app";
 const DEFAULT_PROJECT_ROOT_ENV: &str = "GOWIN_MCP_PROJECT_ROOT";
+const KILL_WAIT_TIMEOUT_SEC: u64 = 10;
+const MAX_OUTPUT_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 struct ExpectedFileCheck {
@@ -93,7 +95,7 @@ fn detect_project_root(start_dir: &Path) -> Option<PathBuf> {
     None
 }
 
-fn resolve_project_root(explicit: Option<&str>) -> PathBuf {
+async fn resolve_project_root(explicit: Option<&str>) -> PathBuf {
     // 優先順位:
     // 1) リクエストの project_root
     // 2) 環境変数 GOWIN_MCP_PROJECT_ROOT
@@ -110,7 +112,9 @@ fn resolve_project_root(explicit: Option<&str>) -> PathBuf {
     }
 
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    detect_project_root(&cwd).unwrap_or(cwd)
+    tokio::task::spawn_blocking(move || detect_project_root(&cwd).unwrap_or(cwd))
+        .await
+        .unwrap_or_else(|_| PathBuf::from("."))
 }
 
 async fn write_run_logs(
@@ -215,23 +219,23 @@ async fn exec_with_timeout(
         .spawn()
         .with_context(|| format!("spawn {}", command.display()))?;
 
-    let mut stdout = child
+    let stdout = child
         .stdout
         .take()
         .ok_or_else(|| anyhow!("stdout pipe missing"))?;
-    let mut stderr = child
+    let stderr = child
         .stderr
         .take()
         .ok_or_else(|| anyhow!("stderr pipe missing"))?;
 
     let stdout_task = tokio::spawn(async move {
         let mut buf = Vec::new();
-        let _ = stdout.read_to_end(&mut buf).await;
+        let _ = stdout.take(MAX_OUTPUT_BYTES).read_to_end(&mut buf).await;
         buf
     });
     let stderr_task = tokio::spawn(async move {
         let mut buf = Vec::new();
-        let _ = stderr.read_to_end(&mut buf).await;
+        let _ = stderr.take(MAX_OUTPUT_BYTES).read_to_end(&mut buf).await;
         buf
     });
 
@@ -241,7 +245,23 @@ async fn exec_with_timeout(
         Err(_) => {
             timed_out = true;
             let _ = child.kill().await;
-            child.wait().await?
+            match timeout(Duration::from_secs(KILL_WAIT_TIMEOUT_SEC), child.wait()).await {
+                Ok(r) => r?,
+                Err(_) => {
+                    stdout_task.abort();
+                    stderr_task.abort();
+                    return Ok(ExecMeta {
+                        exit_code: 124,
+                        timed_out: true,
+                        duration_ms: start.elapsed().as_millis(),
+                        stdout: String::new(),
+                        stderr: format!(
+                            "kill 後 {} 秒以内にプロセスが終了しませんでした",
+                            KILL_WAIT_TIMEOUT_SEC
+                        ),
+                    });
+                }
+            }
         }
     };
 
@@ -282,7 +302,7 @@ impl GowinMcp {
         params: Parameters<RunTclRequest>,
     ) -> Result<Json<RunTclResponse>, McpError> {
         let req = params.0;
-        let project_root = resolve_project_root(req.project_root.as_deref());
+        let project_root = resolve_project_root(req.project_root.as_deref()).await;
 
         let gowin_ide_app_path = req
             .gowin_ide_app_path
@@ -293,12 +313,23 @@ impl GowinMcp {
         let ide_bin_dir = ide_base.join("bin");
 
         let timeout_sec = req.timeout_sec.unwrap_or(1800);
+        if timeout_sec == 0 {
+            return Err(McpError::new(
+                ErrorCode::INVALID_PARAMS,
+                "timeout_sec は 1 以上を指定してください（0 は即タイムアウトになります）",
+                None,
+            ));
+        }
 
         let tcl_file_path = if let Some(tcl_path) = req.tcl_path.as_deref() {
             resolve_under(&project_root, tcl_path)
         } else {
             let inline = req.tcl_inline.clone().ok_or_else(|| {
-                McpError::new(ErrorCode::INVALID_PARAMS, "tcl_inline が未指定です", None)
+                McpError::new(
+                    ErrorCode::INVALID_PARAMS,
+                    "tcl_path と tcl_inline のどちらも未指定です。Tcl ファイルパス (tcl_path) またはインライン Tcl コード (tcl_inline) のいずれかを指定してください",
+                    None,
+                )
             })?;
             let tmp_dir = project_root.join(".gowin-mcp").join("tmp");
             ensure_dir(&tmp_dir)
@@ -397,7 +428,7 @@ impl GowinMcp {
     ) -> Result<Json<ListCablesResponse>, McpError> {
         let req = params.0;
 
-        let project_root = resolve_project_root(req.project_root.as_deref());
+        let project_root = resolve_project_root(req.project_root.as_deref()).await;
 
         let gowin_ide_app_path = req
             .gowin_ide_app_path
@@ -405,8 +436,27 @@ impl GowinMcp {
             .unwrap_or(DEFAULT_GOWIN_APP_PATH);
 
         let timeout_sec = req.timeout_sec.unwrap_or(20);
+        if timeout_sec == 0 {
+            return Err(McpError::new(
+                ErrorCode::INVALID_PARAMS,
+                "timeout_sec は 1 以上を指定してください（0 は即タイムアウトになります）",
+                None,
+            ));
+        }
 
         let (_ide_base, _gw_sh, programmer_cli) = gowin_paths(gowin_ide_app_path);
+
+        if tokio::fs::metadata(&programmer_cli).await.is_err() {
+            return Err(McpError::new(
+                ErrorCode::INVALID_PARAMS,
+                format!(
+                    "programmer_cli が見つかりません: {}。gowin_ide_app_path を確認してください（現在: {}）",
+                    programmer_cli.display(),
+                    gowin_ide_app_path
+                ),
+                None,
+            ));
+        }
 
         let candidates: Vec<Vec<String>> = vec![
             vec!["--list-cables".into()],
@@ -511,7 +561,7 @@ impl GowinMcp {
     ) -> Result<Json<ProgramFsResponse>, McpError> {
         let req = params.0;
 
-        let project_root = resolve_project_root(req.project_root.as_deref());
+        let project_root = resolve_project_root(req.project_root.as_deref()).await;
 
         let gowin_ide_app_path = req
             .gowin_ide_app_path
@@ -530,6 +580,24 @@ impl GowinMcp {
         let frequency = req.frequency.unwrap_or_else(|| "15MHz".into());
         let retries = req.retries.unwrap_or(2);
         let timeout_sec = req.timeout_sec.unwrap_or(120);
+        if timeout_sec == 0 {
+            return Err(McpError::new(
+                ErrorCode::INVALID_PARAMS,
+                "timeout_sec は 1 以上を指定してください（0 は即タイムアウトになります）",
+                None,
+            ));
+        }
+
+        if tokio::fs::metadata(&fs_abs).await.is_err() {
+            return Err(McpError::new(
+                ErrorCode::INVALID_PARAMS,
+                format!(
+                    ".fs ファイルが見つかりません: {}。fs_file_path を確認してください",
+                    fs_abs.display()
+                ),
+                None,
+            ));
+        }
 
         let mut selected_cable = req.cable;
         let mut list_cables_attempts: Option<Vec<Attempt>> = None;
